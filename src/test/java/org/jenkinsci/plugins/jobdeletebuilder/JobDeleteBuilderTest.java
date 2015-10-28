@@ -1,6 +1,5 @@
 package org.jenkinsci.plugins.jobdeletebuilder;
 
-import com.thoughtworks.xstream.mapper.Mapper;
 import hudson.model.*;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
@@ -32,29 +31,24 @@ import static org.junit.Assert.*;
 */
 public class JobDeleteBuilderTest {
 
-
     @Rule
     public JenkinsRule j = new JenkinsRule();
-
+    
     private JobDeleteBuilder.DescriptorImpl getDescriptor() {
         return (JobDeleteBuilder.DescriptorImpl)new JobDeleteBuilder("").getDescriptor();
     }
-
 
     // delete a job test
     @Test
     public void testPerform() throws IOException, ExecutionException, InterruptedException {
         // 1. String Direct 1  SUCCESS
         {
-            String targetJobName = "job01";
-            FreeStyleProject target = j.createFreeStyleProject(targetJobName);
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", targetJobName);
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause()
-            ).get();
+            String targetName = "job1";
+            TestUtil.createJDeleteTargetJobs(j, "job", 1);
 
-            Result result = runJobDeleteBuilder(build);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, targetName);
+            Build build = TestUtil.runBuildAsync(project, null);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete a job test",
@@ -62,20 +56,17 @@ public class JobDeleteBuilderTest {
             );
             assertThat(
                     "Check target is deleted",
-                    Jenkins.getInstance().getItem(targetJobName), nullValue()
+                    Jenkins.getInstance().getItem(targetName), nullValue()
             );
             project.delete();
         }
         // 2. String Direct 0  FAILURE
         {
-            String targetJobName = "job02";
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", targetJobName);
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause()
-            ).get();
+            String targetName = "job1";
 
-            Result result = runJobDeleteBuilder(build);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, targetName);
+            Build build = TestUtil.runBuildAsync(project, null);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete no job test",
@@ -85,15 +76,12 @@ public class JobDeleteBuilderTest {
         }
         // 3. Regexp Direct 1  SUCCESS
         {
-            String targetJobName = "job03";
-            FreeStyleProject target = j.createFreeStyleProject(targetJobName);
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "job.*");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause()
-            ).get();
+            String targetName = "job1";
+            TestUtil.createJDeleteTargetJobs(j, "job", 1);
 
-            Result result = runJobDeleteBuilder(build);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, targetName);
+            Build build = TestUtil.runBuildAsync(project, null);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete a job test",
@@ -101,24 +89,19 @@ public class JobDeleteBuilderTest {
             );
             assertThat(
                     "Check target is deleted",
-                    Jenkins.getInstance().getItem(targetJobName), nullValue()
+                    Jenkins.getInstance().getItem(targetName), nullValue()
             );
             project.delete();
         }
 
         // 4. Regexp Direct 10 SUCCESS
         {
-            String targetJobName = "job";
-            for (int i = 0; i < 10; i++) {
-                j.createFreeStyleProject(targetJobName  + Integer.valueOf(i));
-            }
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "job.*");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause()
-            ).get();
+            String targetName = "job";
+            TestUtil.createJDeleteTargetJobs(j,"job", 10);
 
-            Result result = runJobDeleteBuilder(build);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "job.*");
+            Build build = TestUtil.runBuildAsync(project, null);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete 10 jobs test",
@@ -127,24 +110,21 @@ public class JobDeleteBuilderTest {
             for(int i = 0; i < 10; i++) {
                 assertThat(
                         "Check targets are deleted",
-                        Jenkins.getInstance().getItem(targetJobName + Integer.valueOf(i)), nullValue()
+                        Jenkins.getInstance().getItem(targetName + Integer.valueOf(i)), nullValue()
                 );
             }
             project.delete();
         }
         // 5. String Param  1  SUCCESS
         {
-            String targetJobName = "job01";
-            FreeStyleProject target = j.createFreeStyleProject(targetJobName);
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "${TARGET}");
-            ParametersAction param = createParam(project, "TARGET" ,"job01");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause(),
-                    param
-            ).get();
 
-            Result result = runJobDeleteBuilder(build);
+            String targetName = "job1";
+            TestUtil.createJDeleteTargetJobs(j, "job", 1);
+
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "${TARGET}");
+            ParametersAction param = TestUtil.createParam(project, "TARGET", "job1");
+            Build build = TestUtil.runBuildAsync(project, param);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete a job test",
@@ -152,23 +132,19 @@ public class JobDeleteBuilderTest {
             );
             assertThat(
                     "Check target is deleted",
-                    Jenkins.getInstance().getItem(targetJobName), nullValue()
+                    Jenkins.getInstance().getItem(targetName), nullValue()
             );
             project.delete();
         }
         // 6. Regexp Param  1  SUCCESS
         {
-            String targetJobName = "job01";
-            FreeStyleProject target = j.createFreeStyleProject(targetJobName);
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "${TARGET}");
-            ParametersAction param = createParam(project, "TARGET" ,"job.*");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause(),
-                    param
-            ).get();
+            String targetName = "job1";
+            TestUtil.createJDeleteTargetJobs(j, "job", 1);
 
-            Result result = runJobDeleteBuilder(build);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "${TARGET}");
+            ParametersAction param = TestUtil.createParam(project, "TARGET", "job.*");
+            Build build = TestUtil.runBuildAsync(project, param);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete a job test",
@@ -176,21 +152,18 @@ public class JobDeleteBuilderTest {
             );
             assertThat(
                     "Check target is deleted",
-                    Jenkins.getInstance().getItem(targetJobName), nullValue()
+                    Jenkins.getInstance().getItem(targetName), nullValue()
             );
             project.delete();
         }
         // 7. Empty  Direct 1  FAILURE
         {
-            String targetJobName = "job01";
-            FreeStyleProject target = j.createFreeStyleProject(targetJobName);
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause()
-            ).get();
+            String targetName = "job1";
+            FreeStyleProject target = TestUtil.createJDeleteTargetJobs(j, "job", 1).get(0);
 
-            Result result = runJobDeleteBuilder(build);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "");
+            Build build = TestUtil.runBuildAsync(project, null);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete a job test",
@@ -201,17 +174,12 @@ public class JobDeleteBuilderTest {
         }
         // 8. Empty  Param  1  FAILURE
         {
-            String targetJobName = "job01";
-            FreeStyleProject target = j.createFreeStyleProject(targetJobName);
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "${TARGET}");
-            ParametersAction param = createParam(project, "TARGET" ,"");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause(),
-                    param
-            ).get();
+            FreeStyleProject target = TestUtil.createJDeleteTargetJobs(j, "job", 1).get(0);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "${TARGET}");
+            ParametersAction param = TestUtil.createParam(project, "TARGET", "");
 
-            Result result = runJobDeleteBuilder(build);
+            Build build = TestUtil.runBuildAsync(project, param);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run target name is empty test",
@@ -222,15 +190,11 @@ public class JobDeleteBuilderTest {
         }
         // 9. Empty  Param  0  FAILURE
         {
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "${TARGET}");
-            ParametersAction param = createParam(project, "TARGET" ,"");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause(),
-                    param
-            ).get();
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "${TARGET}");
+            ParametersAction param = TestUtil.createParam(project, "TARGET", "");
 
-            Result result = runJobDeleteBuilder(build);
+            Build build = TestUtil.runBuildAsync(project, param);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run target name is empty test",
@@ -240,13 +204,10 @@ public class JobDeleteBuilderTest {
         }
         //10. String Direct only own job FAILURE
         {
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", "delete-job-project");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause()
-            ).get();
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "delete-job-project");
 
-            Result result = runJobDeleteBuilder(build);
+            Build build = TestUtil.runBuildAsync(project, null);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete a own job test",
@@ -260,15 +221,12 @@ public class JobDeleteBuilderTest {
         }
         //11. Regexp Direct 1 +  own job SUCCESS
         {
-            String targetJobName = "job01-project";
-            FreeStyleProject target = j.createFreeStyleProject(targetJobName);
-            FreeStyleProject project = createJobDeleteProject("delete-job-project", ".*-project");
-            FreeStyleBuild build = project.scheduleBuild2(
-                    project.getQuietPeriod(),
-                    new Cause.UserIdCause()
-            ).get();
+            String targetName = "delete1";
+            TestUtil.createJDeleteTargetJobs(j,"delete", 1);
+            FreeStyleProject project = TestUtil.createJobDeleteProject(j, "delete.*");
 
-            Result result = runJobDeleteBuilder(build);
+            Build build = TestUtil.runBuildAsync(project, null);
+            Result result = TestUtil.getResult(build);
 
             assertThat(
                     "Run delete a job test",
@@ -276,7 +234,7 @@ public class JobDeleteBuilderTest {
             );
             assertThat(
                     "Check target is deleted",
-                    Jenkins.getInstance().getItem(targetJobName), nullValue()
+                    Jenkins.getInstance().getItem(targetName), nullValue()
             );
             assertThat(
                     "Check delete-job-project is not deleted",
@@ -286,36 +244,7 @@ public class JobDeleteBuilderTest {
         }
     }
 
-    private FreeStyleProject createJobDeleteProject(String jobName, String target) throws IOException {
-        FreeStyleProject project = j.createFreeStyleProject(jobName);
 
-        JobDeleteBuilder job = new JobDeleteBuilder(target);
-        project.getBuildersList().add(job);
-        return project;
-    }
-
-    private ParametersAction createParam(FreeStyleProject project,String paramName, String paramValue) throws IOException, ExecutionException, InterruptedException {
-        project.addProperty(new ParametersDefinitionProperty(
-                new StringParameterDefinition(
-                        paramName,
-                        "",
-                        "Description"
-                )
-        ));
-        ParametersAction paramAction = new ParametersAction(
-                new StringParameterValue(paramName, paramValue)
-        );
-
-        return paramAction;
-    }
-
-    private Result runJobDeleteBuilder (FreeStyleBuild build) throws InterruptedException {
-        while(build.isBuilding())
-        {
-            Thread.sleep(10);
-        }
-        return build.getResult();
-    }
 
     @Test
     public void testDescriptorDoCheckTarget() {
