@@ -5,6 +5,7 @@ import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
+import hudson.model.Item;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
@@ -35,7 +36,8 @@ public class JobDeleteBuilder extends Builder {
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener)
             throws InterruptedException, IOException {
-        List<AbstractProject> allJobs = Jenkins.getInstance().getAllItems(AbstractProject.class);
+                
+        List<Item> allJobs = Jenkins.getInstance().getAllItems();
 
         // Get job name on this build
         String myJobName = build.getProject().getDisplayName();
@@ -49,15 +51,15 @@ public class JobDeleteBuilder extends Builder {
         listener.getLogger().println(Messages.JobDeleteBuilder_deleted_target() + " : " + deleteRegexp);
 
         // Get delete jobs
-        List<AbstractProject<?,?>> deleteJobs = getDeleteJobs(allJobs, deleteRegexp, myJobName);
+        List<Item> deleteJobs = getDeleteJobs(allJobs, deleteRegexp, myJobName);
         if (deleteJobs.isEmpty()) {
             listener.getLogger().println("Error : " + Messages.JobDeleteBuilder_JobName_notExists());
             return false;
         }
 
         // Delete jobs
-        for (AbstractProject<?, ?> job : deleteJobs) {
-            listener.getLogger().println(Messages.JobDeleteBuilder_delete_complete() + " : " + job.getDisplayName());
+        for (Item job : deleteJobs) {
+            listener.getLogger().println(Messages.JobDeleteBuilder_delete_complete() + " : " + job.getFullName());
             job.delete();
         }
 
@@ -78,11 +80,11 @@ public class JobDeleteBuilder extends Builder {
         return exRegexp;
     }
 
-    private List<AbstractProject<?,?>> getDeleteJobs(List<AbstractProject> allJobs, String deleteRegexp, String myJobName) {
-        List<AbstractProject<?,?>> deleteJobList = new ArrayList<AbstractProject<?,?>>();
+    private List<Item> getDeleteJobs(List<Item> allJobs, String deleteRegexp, String myJobName) {
+        List<Item> deleteJobList = new ArrayList<Item>();
 
-        for (AbstractProject<?, ?> job : allJobs) {
-            String jobName = job.getDisplayName();
+        for (Item job : allJobs) {
+            String jobName = job.getFullName();
 
             if (jobName.equals(myJobName)) {
                 continue;
